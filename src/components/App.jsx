@@ -1,114 +1,90 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { nanoid } from 'nanoid';
 import { Notify } from 'notiflix';
 import ContactForm from './ContactForm/ContactForm';
 import Filter from './Filter/Filter';
 import ContactList from './ContactList/ContactList';
 
-class App extends Component {
-  state = {
-    contacts: [],
-    filter: '',
-  };
-  componentDidMount() {
-    const parsedContactsFromLocalStorage = JSON.parse(
-      localStorage.getItem('contacts')
-    );
-    // console.log(parsedContactsFromLocalStorage);
-    if (
-      parsedContactsFromLocalStorage &&
-      parsedContactsFromLocalStorage.length > 0
-    ) {
-      this.setState({ contacts: parsedContactsFromLocalStorage });
-    }
-  }
+function App() {
+  const [contacts, setContact] = useState(
+    () => JSON.parse(localStorage.getItem('contacts')) ?? []
+  );
+  const [filter, setFilter] = useState('');
 
-  componentDidUpdate(_, { contacts: prevContacts }) {
-    // console.log(contacts);
-    // console.log(this.state.contacts);
-    const { contacts: newContacts } = this.state;
-    if (prevContacts !== newContacts) {
-      this.setState({ contacts: newContacts });
-      localStorage.setItem('contacts', JSON.stringify(newContacts));
-    }
-  }
+  useEffect(() => {
+    localStorage.setItem('contacts', JSON.stringify(contacts));
+  }, [contacts]);
 
-  addNewContact = ({ name, number }) => {
-    if (this.checkContactExist(name)) {
+  const addNewContact = ({ name, number }) => {
+    if (checkContactExist(name)) {
       Notify.failure(`${name} is already in your contacts`);
       return;
     }
-    this.setState(({ contacts }) => {
+    setContact(prevContacts => {
       const newContact = {
         id: nanoid(),
         name,
         number,
       };
-      return {
-        contacts: [...contacts, newContact],
-      };
+      return [...prevContacts, newContact];
     });
   };
 
-  deleteContact = id => {
-    this.setState(({ contacts }) => {
-      const filteredContacts = contacts.filter(contact => contact.id !== id);
-      return { contacts: filteredContacts };
+  const deleteContact = id => {
+    setContact(prevContacts => {
+      return prevContacts.filter(contact => contact.id !== id);
     });
   };
 
-  checkContactExist = name => {
+  const checkContactExist = name => {
     const normalizadName = name.toLowerCase().trim();
-    const { contacts } = this.state;
     const foundContact = contacts.find(
       ({ name }) => name.toLowerCase().trim() === normalizadName
     );
     return Boolean(foundContact);
   };
 
-  filterInput = ({ target }) => {
-    this.setState({ filter: target.value });
-  };
+  const filterInput = ({ target }) => setFilter(target.value);
 
-  filterContactList = () => {
-    const { filter, contacts } = this.state;
-    const filteredContacts = contacts.filter(({ name }) => {
+  const filterContactList = () => {
+    return contacts.filter(({ name }) => {
       return name.toLowerCase().trim().includes(filter.toLowerCase().trim());
     });
-    return filteredContacts;
   };
 
-  render() {
-    const { filter } = this.state;
-    const contacts = this.filterContactList();
+  const filteredContacts = filterContactList();
+  const isContacts = Boolean(filteredContacts.length);
 
-    return (
-      <div
-        style={{
-          height: '100vh',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          fontSize: 40,
-          color: '#010101',
-        }}
-      >
+  return (
+    <div
+      style={{
+        height: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        fontSize: 40,
+        color: '#010101',
+      }}
+    >
+      <div>
+        <div style={{ marginBottom: '30px', width: '350px' }}>
+          <h2 style={{ marginBottom: '10px', fontSize: '40px' }}>PhoneBook</h2>
+          <ContactForm onSubmit={addNewContact} />
+        </div>
         <div>
-          <div style={{ marginBottom: '30px', width: '350px' }}>
-            <h2 style={{ marginBottom: '10px', fontSize: '40px' }}>
-              PhoneBook
-            </h2>
-            <ContactForm onSubmit={this.addNewContact} />
-          </div>
-          <div>
-            <h3 style={{ marginBottom: '10px', fontSize: '30px' }}>Contacts</h3>
-            <Filter filter={filter} filterInput={this.filterInput} />
-            <ContactList contacts={contacts} onClick={this.deleteContact} />
-          </div>
+          <h3 style={{ marginBottom: '10px', fontSize: '30px' }}>Contacts</h3>
+          <Filter filter={filter} filterInput={filterInput} />
+          {isContacts ? (
+            <ContactList contacts={filteredContacts} onClick={deleteContact} />
+          ) : (
+            <p style={{ fontSize: 18, color: '#010101' }}>
+              There are no contacts in your phonebook
+            </p>
+          )}
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 }
 
 export default App;
